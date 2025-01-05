@@ -4,6 +4,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Picker } from '@react-native-picker/picker';
 import { Task, Category } from '@/types';
+import { Ionicons } from '@expo/vector-icons'; 
+import { router } from 'expo-router';
 
 const STORAGE_KEY = '@tasks';
 const categories: Category[] = ['work', 'personal', 'shopping', 'other'];
@@ -81,8 +83,17 @@ export default function TasksList() {
 
   return (
     <View className="flex-1 bg-gray-50 p-4">
-      <Text className="text-2xl font-bold text-gray-800 mb-6">Tasks List</Text>
-      
+      <View className="flex-row justify-between items-center mb-6">
+        <TouchableOpacity 
+          onPress={() => router.back()}
+          className="p-2"
+        >
+          <Ionicons name="arrow-back" size={24} color="#1f2937" />
+        </TouchableOpacity>
+        <Text className="text-2xl font-bold text-gray-800">Tasks List</Text>
+        <View style={{ width: 24 }} /> {/* Spacer for alignment */}
+      </View>
+
       <View className="mb-4">
         <TextInput
           className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white mb-2"
