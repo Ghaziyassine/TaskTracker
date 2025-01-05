@@ -21,10 +21,10 @@ https://github.com/user-attachments/assets/c6037233-6f02-4c05-9e42-79b906dffa19
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/task-tracker-app.git
+   git clone https://github.com/Ghaziyassine/TaskTracker.git
    ```
    ```bash
-   cd task-tracker-app
+   cd TaskTracker
    ```
 2. Install dependencies:
    ```bash
