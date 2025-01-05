@@ -8,6 +8,7 @@ export default function Index() {
       <Link href="/sign-in" className="mt-4 text-blue-500">Sign in</Link>
       <Link href="/explore" className="mt-2 text-blue-500">Explore</Link>
       <Link href="/profile" className="mt-2 text-blue-500">Profile</Link>
+      <Link href="/tasksList" className="mt-2 text-blue-500">Tasks</Link>
     </View>
   );
 }
