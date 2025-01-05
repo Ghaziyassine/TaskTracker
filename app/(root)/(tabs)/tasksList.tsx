@@ -1,138 +1,200 @@
 import React, { useState, useEffect } from 'react';
-import { View, FlatList, Text, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, TextInput, TouchableOpacity, Platform } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Task, Category } from '../../../types';
+import { Picker } from '@react-native-picker/picker';
+import { Task, Category } from '@/types';
 
-// Test data
-const initialTasks: Task[] = [
-  {
-    id: '1',
-    title: 'Test Task 1',
-    completed: false,
-    category: 'work',
-    dueDate: new Date(),
-    createdAt: new Date()
-  },
-  {
-    id: '2',
-    title: 'Test Task 2',
-    completed: true,
-    category: 'personal',
-    dueDate: new Date(),
-    createdAt: new Date()
-  }
-];
+const STORAGE_KEY = '@tasks';
+const categories: Category[] = ['work', 'personal', 'shopping', 'other'];
 
 export default function TasksList() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks); // Initialize with test data
-  const [selectedCategory, setSelectedCategory] = useState<Category | 'all'>('all');
-
-  const categories: Category[] = ['work', 'personal', 'shopping', 'other'];
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('other');
+  const [dueDate, setDueDate] = useState(new Date());
+  const [filterCategory, setFilterCategory] = useState<Category | 'all'>('all');
+  const [sortByDate, setSortByDate] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     loadTasks();
-    console.log('Current tasks:', tasks); // Debug log
   }, []);
 
   const loadTasks = async () => {
     try {
-      const storedTasks = await AsyncStorage.getItem('tasks');
+      const storedTasks = await AsyncStorage.getItem(STORAGE_KEY);
       if (storedTasks) {
-        const parsedTasks = JSON.parse(storedTasks);
-        setTasks(parsedTasks);
-        console.log('Loaded tasks:', parsedTasks); // Debug log
-      } else {
-        // If no stored tasks, use initial test data
-        await AsyncStorage.setItem('tasks', JSON.stringify(initialTasks));
-        setTasks(initialTasks);
+        setTasks(JSON.parse(storedTasks));
       }
     } catch (error) {
       console.error('Error loading tasks:', error);
     }
   };
 
-  const toggleTask = async (id: string) => {
+  const saveTasks = async (newTasks: Task[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(newTasks));
+    } catch (error) {
+      console.error('Error saving tasks:', error);
+    }
+  };
+
+  const addTask = () => {
+    if (newTaskTitle.trim() === '') return;
+    const newTask: Task = {
+      id: Date.now().toString(),
+      title: newTaskTitle,
+      completed: false,
+      category: selectedCategory,
+      dueDate: dueDate,
+      createdAt: new Date(),
+    };
+    const updatedTasks = [...tasks, newTask];
+    setTasks(updatedTasks);
+    saveTasks(updatedTasks);
+    setNewTaskTitle('');
+  };
+
+  const toggleTaskCompletion = (id: string) => {
     const updatedTasks = tasks.map(task =>
       task.id === id ? { ...task, completed: !task.completed } : task
     );
     setTasks(updatedTasks);
-    await AsyncStorage.setItem('tasks', JSON.stringify(updatedTasks));
+    saveTasks(updatedTasks);
   };
 
-  const deleteTask = async (id: string) => {
+  const deleteTask = (id: string) => {
     const updatedTasks = tasks.filter(task => task.id !== id);
     setTasks(updatedTasks);
-    await AsyncStorage.setItem('tasks', JSON.stringify(updatedTasks));
+    saveTasks(updatedTasks);
   };
 
-  const filteredTasks = selectedCategory === 'all' 
-    ? tasks
-    : tasks.filter(task => task.category === selectedCategory);
+  const filteredAndSortedTasks = tasks
+    .filter(task => filterCategory === 'all' || task.category === filterCategory)
+    .sort((a, b) => {
+      if (sortByDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      return 0;
+    });
 
   return (
-    <View className="flex-1 bg-gray-100 p-4">
-      <View className="flex-row mb-4 space-x-2">
-        <TouchableOpacity
-          className={`px-4 py-2 rounded-full ${
-            selectedCategory === 'all' ? 'bg-blue-500' : 'bg-gray-300'
-          }`}
-          onPress={() => setSelectedCategory('all')}
-        >
-          <Text className={`${selectedCategory === 'all' ? 'text-white' : 'text-gray-700'}`}>
-            All
-          </Text>
-        </TouchableOpacity>
-        {categories.map(category => (
-          <TouchableOpacity
-            key={category}
-            className={`px-4 py-2 rounded-full ${
-              selectedCategory === category ? 'bg-blue-500' : 'bg-gray-300'
-            }`}
-            onPress={() => setSelectedCategory(category)}
+    <View className="flex-1 bg-gray-50 p-4">
+      <Text className="text-2xl font-bold text-gray-800 mb-6">Tasks List</Text>
+      
+      <View className="mb-4">
+        <TextInput
+          className="w-full px-4 py-2 rounded-lg border border-gray-300 bg-white mb-2"
+          placeholder="Add new task..."
+          value={newTaskTitle}
+          onChangeText={setNewTaskTitle}
+        />
+        
+        <View className="bg-white rounded-lg mb-2">
+          <Picker
+            selectedValue={selectedCategory}
+            onValueChange={value => setSelectedCategory(value as Category)}
           >
-            <Text className={`${selectedCategory === category ? 'text-white' : 'text-gray-700'}`}>
-              {category.charAt(0).toUpperCase() + category.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
+            {categories.map(category => (
+              <Picker.Item key={category} label={category} value={category} />
+            ))}
+          </Picker>
+        </View>
+
+        <TouchableOpacity 
+          onPress={() => setShowDatePicker(true)}
+          className="bg-white p-3 rounded-lg mb-2">
+          <Text>Due Date: {dueDate.toLocaleDateString()}</Text>
+        </TouchableOpacity>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={dueDate}
+            mode="date"
+            onChange={(event, date) => {
+              setShowDatePicker(Platform.OS === 'ios');
+              if (date) setDueDate(date);
+            }}
+          />
+        )}
+
+        <TouchableOpacity 
+          onPress={addTask}
+          className="bg-blue-500 p-3 rounded-lg">
+          <Text className="text-white text-center font-semibold">Add Task</Text>
+        </TouchableOpacity>
       </View>
 
-      {tasks.length === 0 ? (
-        <View className="flex-1 justify-center items-center">
-          <Text className="text-gray-500 text-lg">No tasks available</Text>
+      <View className="flex-row justify-between items-center mb-4">
+        <View className="flex-1 mr-2">
+          <Picker
+            selectedValue={filterCategory}
+            onValueChange={(itemValue) => setFilterCategory(itemValue)}
+            className="bg-white rounded-lg h-12 px-2"
+          >
+            <Picker.Item label="All Categories" value="all" />
+            {categories.map((category) => (
+              <Picker.Item 
+                key={category} 
+                label={category.charAt(0).toUpperCase() + category.slice(1)} 
+                value={category}
+              />
+            ))}
+          </Picker>
         </View>
-      ) : (
-        <FlatList
-          data={filteredTasks}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View className="bg-white p-4 mb-2 rounded-lg flex-row items-center">
-              <TouchableOpacity
-                onPress={() => toggleTask(item.id)}
-                className="mr-3"
-              >
-                <View className={`w-6 h-6 rounded-full border-2 ${
-                  item.completed ? 'bg-green-500 border-green-500' : 'border-gray-400'
-                }`} />
-              </TouchableOpacity>
-              <View className="flex-1">
+
+        <TouchableOpacity 
+          onPress={() => setSortByDate(!sortByDate)}
+          className={`px-4 py-3 rounded-lg ${
+            sortByDate ? 'bg-blue-500' : 'bg-gray-300'
+          }`}
+        >
+          <Text className={`${
+            sortByDate ? 'text-white' : 'text-gray-700'
+          } font-medium`}>
+            Sort by Date
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={filteredAndSortedTasks}
+        keyExtractor={item => item.id}
+        className="flex-1"
+        renderItem={({ item }) => (
+          <View className="bg-white mb-2 p-4 rounded-lg shadow-sm">
+            <View className="flex-row justify-between items-center">
+              <TouchableOpacity 
+                onPress={() => toggleTaskCompletion(item.id)}
+                className="flex-1">
                 <Text className={`text-lg ${item.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                   {item.title}
                 </Text>
                 <Text className="text-sm text-gray-500">
-                  Due: {new Date(item.dueDate).toLocaleDateString()}
+                  {item.category} • Due: {new Date(item.dueDate).toLocaleDateString()}
                 </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => deleteTask(item.id)}
-                className="ml-2"
-              >
-                <Text className="text-red-500">Delete</Text>
               </TouchableOpacity>
+              
+              <View className="flex-row gap-2">
+                <TouchableOpacity 
+                  onPress={() => toggleTaskCompletion(item.id)}
+                  className={`px-3 py-1 rounded-md ${item.completed ? 'bg-gray-200' : 'bg-green-500'}`}>
+                  <Text className={`${item.completed ? 'text-gray-600' : 'text-white'}`}>
+                    {item.completed ? 'Undo' : 'Complete'}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  onPress={() => deleteTask(item.id)}
+                  className="bg-red-500 px-3 py-1 rounded-md">
+                  <Text className="text-white">Delete</Text>
+                </TouchableOpacity>
+              </View>
             </View>
-          )}
-        />
-      )}
+          </View>
+        )}
+      />
     </View>
   );
 }
