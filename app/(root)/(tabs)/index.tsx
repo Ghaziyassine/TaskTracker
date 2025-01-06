@@ -70,6 +70,7 @@ export default function Index() {
       {/* Footer */}
       <View className="p-4 items-center">
         <Text className="text-gray-500">Stay organized, get more done</Text>
+        <Text className="text-gray-500">By GHAZI</Text>
       </View>
     </View>
   );
